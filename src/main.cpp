@@ -3,6 +3,7 @@
  */
 
 #include <Arduino.h>
+#include <avr/wdt.h>
 #include <Wire.h>
 #include <ControllerSafetyWatchdog.h>
 #include "Constants.h"
@@ -12,6 +13,7 @@ static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
 void setup() {
+    wdt_enable(SYSTEM_WATCHDOG); //Enable the system watchdog.  This fully reboots the controller if something hangs
 #ifdef DEBUG
     Serial.begin(9600);
 #endif
@@ -32,4 +34,5 @@ void loop() {
 
     //Set the output to the state
     digitalWrite(RELAY_PIN, state);
+    wdt_reset(); //Feed the system watchdog timer
 }
