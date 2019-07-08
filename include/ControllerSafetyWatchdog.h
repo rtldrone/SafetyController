@@ -13,7 +13,7 @@
 
 class ControllerSafetyWatchdog {
 public:
-    ControllerSafetyWatchdog(TwoWire *_twoWire);
+    explicit ControllerSafetyWatchdog(TwoWire *_twoWire);
 
     /**
      * Opens the I2C connection with the correct address
@@ -32,7 +32,7 @@ public:
     bool getSafetyState();
 private:
     TwoWire *twoWire;
-    uint32_t lastValidRecvTime;
+    uint32_t lastValidRecvTime = 0;
 };
 
 #endif //SAFETYCONTROLLER_CONTROLLERSAFETYWATCHDOG_H

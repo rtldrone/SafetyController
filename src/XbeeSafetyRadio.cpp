@@ -44,30 +44,35 @@ void XbeeSafetyRadio::update() {
                 byteIn = serial->read();
                 recvPayloadSize = (byteIn << 8U); //Store the MSB of the size
                 recvState = RECV_STATE_HAVE_FIRST_SIZE_BYTE;
+                DEBUG_LOG("Got Xbee starting delimiter");
             } else break;
         case (RECV_STATE_HAVE_FIRST_SIZE_BYTE):
             //In this state we read the second size byte
             if (serial->available()) {
                 byteIn = serial->read();
                 recvPayloadSize |= byteIn; //Store the LSB of the size
+                if (recvPayloadSize > RECV_BUFFER_SIZE) {
+                    //Too much data, stop reading here
+                    recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    DEBUG_LOG("Xbee payload size too large");
+                    break;
+                }
                 recvState = RECV_STATE_HAVE_SECOND_SIZE_BYTE;
+                DEBUG_LOG("Got Xbee size LSB");
             } else break;
         case (RECV_STATE_HAVE_SECOND_SIZE_BYTE):
             //In this state we read the payload
-            if (recvPayloadSize > RECV_BUFFER_SIZE) {
-                //Too much data, stop reading here
-                recvState = RECV_STATE_AWAITING_START_DELIMITER;
-                break;
-            }
             if (serial->available()) {
                 numBytesRead = serial->readBytes(recvBuffer, recvPayloadSize);
                 if (numBytesRead != recvPayloadSize) {
                     //We didn't read the right number of bytes
                     //This most likely indicates not enough data sent.  Stop reading here and reset
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    DEBUG_LOG("Xbee incorrect payload read size");
                     break;
                 }
                 recvState = RECV_STATE_HAVE_PAYLOAD;
+                DEBUG_LOG("Got Xbee payload");
             } else break;
         case (RECV_STATE_HAVE_PAYLOAD):
             //In this state we read the checksum from the packet and compare it with one we compute
@@ -77,21 +82,20 @@ void XbeeSafetyRadio::update() {
                 if (byteIn != computedChecksum) {
                     //Packet checksum mismatch, reset
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    DEBUG_LOG("Xbee checksum mismatch");
                     break;
                 }
-                recvState = RECV_STATE_VALID_PACKET;
-            } else break;
-        case (RECV_STATE_VALID_PACKET):
-            //In this state we have a fully valid packet.  Now we check if it is the correct frame type
-            if (recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(4)] != 0x83) { //0x83 is the 16 bit IO data frame type
-                //Wrong packet type, ignore it
+                if (recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(4)] != 0x83) { //0x83 is the 16 bit IO data frame type
+                    //Wrong packet type, ignore it
+                    recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    DEBUG_LOG("Xbee wrong frame type");
+                    break;
+                }
+                DEBUG_LOG("Xbee received valid packet");
+                lastValidRecvTime = millis();
+                analyzePacket();
                 recvState = RECV_STATE_AWAITING_START_DELIMITER;
-                break;
-            }
-            lastValidRecvTime = millis();
-            analyzePacket();
-            recvState = RECV_STATE_AWAITING_START_DELIMITER;
-            break;
+            } else break;
     }
 }
 
@@ -106,6 +110,7 @@ void XbeeSafetyRadio::analyzePacket() {
     if (!pinState) {
         //If the pin is low, we consider this an Estop.  Update the time accordingly
         lastEstopRecvTime = millis();
+        DEBUG_LOG("Xbee received ESTOP packet!");
     }
 }
 

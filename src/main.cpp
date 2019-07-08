@@ -12,6 +12,9 @@ static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial1);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
 void setup() {
+#ifdef DEBUG
+    Serial.begin(9600);
+#endif
     safetyRadio->begin(); //Open the safety radio
     safetyWatchdog->begin();
     pinMode(RELAY_PIN, OUTPUT);

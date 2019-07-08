@@ -19,7 +19,6 @@
 #define RECV_STATE_HAVE_FIRST_SIZE_BYTE 2
 #define RECV_STATE_HAVE_SECOND_SIZE_BYTE 3
 #define RECV_STATE_HAVE_PAYLOAD 4
-#define RECV_STATE_VALID_PACKET 5
 
 //Helper Macros
 #define FRAME_OFFSET_TO_BUFFER_INDEX(x) x - 4
@@ -33,7 +32,7 @@ public:
      * Creates a new XbeeRadio object
      * @param _serial The serial interface to use for communication with the Xbee
      */
-    XbeeSafetyRadio(HardwareSerial *_serial);
+    explicit XbeeSafetyRadio(HardwareSerial *_serial);
 
     /**
      * Opens the serial port at the correct baudrate
@@ -64,7 +63,7 @@ private:
     uint32_t lastValidRecvTime = 0;
     uint32_t lastEstopRecvTime = 0;
     uint8_t recvState = RECV_STATE_AWAITING_START_DELIMITER;
-    uint8_t recvBuffer[RECV_BUFFER_SIZE];
+    uint8_t recvBuffer[RECV_BUFFER_SIZE] = {0};
 
     uint16_t recvPayloadSize = 0;
 

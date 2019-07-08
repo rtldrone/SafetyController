@@ -5,6 +5,15 @@
 #ifndef SAFETYCONTROLLER_CONSTANTS_H
 #define SAFETYCONTROLLER_CONSTANTS_H
 
+//Comment out this line to disable debugging
+#define DEBUG
+
+#ifdef DEBUG
+#define DEBUG_LOG(x) Serial.print(millis()); Serial.print(':'); Serial.print(' '); Serial.print(x); Serial.println()
+#else
+#define DEBUG_LOG(x)
+#endif
+
 #define ESTOP 0
 #define ENABLE 1
 

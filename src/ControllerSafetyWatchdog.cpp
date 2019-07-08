@@ -25,6 +25,7 @@ void ControllerSafetyWatchdog::update() {
         if (byteIn == I2C_ENABLE_BYTE) {
             //We got a valid packet
             lastValidRecvTime = millis(); //Update the time
+            DEBUG_LOG("I2C Watchdog got valid packet");
         }
         i++;
     }
