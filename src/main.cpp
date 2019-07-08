@@ -8,15 +8,14 @@
 #include "Constants.h"
 #include "XbeeSafetyRadio.h"
 
-static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial1);
+static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
 void setup() {
 #ifdef DEBUG
     Serial.begin(9600);
 #endif
-    safetyRadio->begin(); //Open the safety radio
-    safetyWatchdog->begin();
+    Wire.begin(0x42);
     pinMode(RELAY_PIN, OUTPUT);
 }
 
@@ -29,7 +28,7 @@ void loop() {
 
     //Check state from all safety managers
     state &= safetyRadio->getSafetyState();
-    state &= safetyWatchdog->getSafetyState();
+    //state &= safetyWatchdog->getSafetyState();
 
     //Set the output to the state
     digitalWrite(RELAY_PIN, state);

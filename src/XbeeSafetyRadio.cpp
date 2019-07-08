@@ -5,7 +5,7 @@
 #include <Arduino.h>
 #include "XbeeSafetyRadio.h"
 
-XbeeSafetyRadio::XbeeSafetyRadio(HardwareSerial *_serial) {
+XbeeSafetyRadio::XbeeSafetyRadio(Stream *_serial) {
     serial = _serial;
 }
 
@@ -19,32 +19,38 @@ uint8_t XbeeSafetyRadio::checksum(const uint8_t *buffer, size_t length) {
     return (uint8_t) checksum;
 }
 
-void XbeeSafetyRadio::begin() {
-    serial->begin(XBEE_BAUDRATE);
-}
-
 void XbeeSafetyRadio::update() {
     //Variables used throughout the update process
+    uint32_t time = millis();
     uint8_t byteIn = 0;
     uint16_t numBytesRead = 0;
     uint8_t computedChecksum = 0;
 
-    //Always check first for the start delimiter
     if (serial->available()) {
-        if (serial->peek() == 0x7E) { //0x7E is the start delimiter
-            serial->read(); //Remove the start delimiter from the serial buffer
-            recvState = RECV_STATE_GOT_START_DELIMITER;
+        if (time - lastStateChangeTime > SERIAL_WATCHDOG_TIMEOUT) {
+            //We're stuck in a state with data in the buffer.  Reset the state machine
+            recvState = RECV_STATE_AWAITING_START_DELIMITER;
         }
     }
 
     switch (recvState) {
+        case (RECV_STATE_AWAITING_START_DELIMITER):
+            if (serial->available()) {
+                byteIn = serial->read();
+                if (byteIn == 0x7E) {
+                    recvState = RECV_STATE_GOT_START_DELIMITER;
+                    lastStateChangeTime = time;
+                    DEBUG_LOG("Got Xbee starting delimiter");
+                } else break;
+            } else break;
         case (RECV_STATE_GOT_START_DELIMITER):
             //In this state we read the first size byte
             if (serial->available()) {
                 byteIn = serial->read();
                 recvPayloadSize = (byteIn << 8U); //Store the MSB of the size
                 recvState = RECV_STATE_HAVE_FIRST_SIZE_BYTE;
-                DEBUG_LOG("Got Xbee starting delimiter");
+                lastStateChangeTime = time;
+                DEBUG_LOG("Got Xbee size MSB");
             } else break;
         case (RECV_STATE_HAVE_FIRST_SIZE_BYTE):
             //In this state we read the second size byte
@@ -54,11 +60,13 @@ void XbeeSafetyRadio::update() {
                 if (recvPayloadSize > RECV_BUFFER_SIZE) {
                     //Too much data, stop reading here
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    lastStateChangeTime = time;
                     DEBUG_LOG("Xbee payload size too large");
                     break;
                 }
                 recvState = RECV_STATE_HAVE_SECOND_SIZE_BYTE;
-                DEBUG_LOG("Got Xbee size LSB");
+                lastStateChangeTime = time;
+                DEBUG_LOG("Got Xbee size");
             } else break;
         case (RECV_STATE_HAVE_SECOND_SIZE_BYTE):
             //In this state we read the payload
@@ -68,10 +76,12 @@ void XbeeSafetyRadio::update() {
                     //We didn't read the right number of bytes
                     //This most likely indicates not enough data sent.  Stop reading here and reset
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    lastStateChangeTime = time;
                     DEBUG_LOG("Xbee incorrect payload read size");
                     break;
                 }
                 recvState = RECV_STATE_HAVE_PAYLOAD;
+                lastStateChangeTime = time;
                 DEBUG_LOG("Got Xbee payload");
             } else break;
         case (RECV_STATE_HAVE_PAYLOAD):
@@ -82,19 +92,22 @@ void XbeeSafetyRadio::update() {
                 if (byteIn != computedChecksum) {
                     //Packet checksum mismatch, reset
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    lastStateChangeTime = time;
                     DEBUG_LOG("Xbee checksum mismatch");
                     break;
                 }
                 if (recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(4)] != 0x83) { //0x83 is the 16 bit IO data frame type
                     //Wrong packet type, ignore it
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                    lastStateChangeTime = time;
                     DEBUG_LOG("Xbee wrong frame type");
                     break;
                 }
                 DEBUG_LOG("Xbee received valid packet");
-                lastValidRecvTime = millis();
+                lastValidRecvTime = time;
                 analyzePacket();
                 recvState = RECV_STATE_AWAITING_START_DELIMITER;
+                lastStateChangeTime = time;
             } else break;
     }
 }

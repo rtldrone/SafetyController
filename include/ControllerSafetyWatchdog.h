@@ -13,12 +13,7 @@
 
 class ControllerSafetyWatchdog {
 public:
-    explicit ControllerSafetyWatchdog(TwoWire *_twoWire);
-
-    /**
-     * Opens the I2C connection with the correct address
-     */
-    void begin();
+    explicit ControllerSafetyWatchdog(Stream *_twoWire);
 
     /**
      * Updates the watchdog I2C data.  This should be run every loop
@@ -31,7 +26,7 @@ public:
      */
     bool getSafetyState();
 private:
-    TwoWire *twoWire;
+    Stream *twoWire;
     uint32_t lastValidRecvTime = 0;
 };
 

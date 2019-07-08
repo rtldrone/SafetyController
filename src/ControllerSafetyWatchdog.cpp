@@ -6,12 +6,8 @@
 #include "ControllerSafetyWatchdog.h"
 #include "Constants.h"
 
-ControllerSafetyWatchdog::ControllerSafetyWatchdog(TwoWire *_twoWire) {
+ControllerSafetyWatchdog::ControllerSafetyWatchdog(Stream *_twoWire) {
     twoWire = _twoWire;
-}
-
-void ControllerSafetyWatchdog::begin() {
-    twoWire->begin(I2C_ADDRESS);
 }
 
 void ControllerSafetyWatchdog::update() {
@@ -32,7 +28,7 @@ void ControllerSafetyWatchdog::update() {
 }
 
 bool ControllerSafetyWatchdog::getSafetyState() {
-    uint8_t time = millis();
+    uint32_t time = millis();
     if (time - lastValidRecvTime > CONTROLLER_WATCHDOG_TIMEOUT) {
         //We haven't gotten an update in more time than the timeout
         return ESTOP;

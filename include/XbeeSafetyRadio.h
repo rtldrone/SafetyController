@@ -32,12 +32,7 @@ public:
      * Creates a new XbeeRadio object
      * @param _serial The serial interface to use for communication with the Xbee
      */
-    explicit XbeeSafetyRadio(HardwareSerial *_serial);
-
-    /**
-     * Opens the serial port at the correct baudrate
-     */
-    void begin();
+    explicit XbeeSafetyRadio(Stream *_serial);
 
     /**
      * Computes the checksum of an Xbee API packet
@@ -59,9 +54,10 @@ public:
     bool getSafetyState();
 
 private:
-    HardwareSerial *serial;
+    Stream *serial;
     uint32_t lastValidRecvTime = 0;
     uint32_t lastEstopRecvTime = 0;
+    uint32_t lastStateChangeTime = 0;
     uint8_t recvState = RECV_STATE_AWAITING_START_DELIMITER;
     uint8_t recvBuffer[RECV_BUFFER_SIZE] = {0};
 
