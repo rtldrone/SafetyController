@@ -9,7 +9,7 @@
 #include "Constants.h"
 #include "XbeeSafetyRadio.h"
 
-static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial);
+static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial1);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
 void setup() {
@@ -17,6 +17,7 @@ void setup() {
 #ifdef DEBUG
     Serial.begin(9600);
 #endif
+    Serial1.begin(9600);
     Wire.begin(0x42);
     pinMode(RELAY_PIN, OUTPUT);
 }
