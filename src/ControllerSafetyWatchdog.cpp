@@ -17,6 +17,7 @@ void ControllerSafetyWatchdog::update() {
     //want to potentially freeze our program here if the data is coming in too fast.  Limiting ourselves to a maximum
     //of 64 bytes read per cycle solves this problem (the I2C buffer is 32 bytes)
     while (twoWire->available() && i < 64) {
+        DEBUG_LOG("Got I2C Byte");
         uint8_t byteIn = twoWire->read(); //Read a byte from I2C
         if (byteIn == I2C_ENABLE_BYTE) {
             //We got a valid packet

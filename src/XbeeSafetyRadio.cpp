@@ -96,7 +96,7 @@ void XbeeSafetyRadio::update() {
                     DEBUG_LOG("Xbee checksum mismatch");
                     break;
                 }
-                if (recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(4)] != 0x83) { //0x83 is the 16 bit IO data frame type
+                if (recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(4)] != 0x82) { //0x82 is the 64 bit IO data frame type
                     //Wrong packet type, ignore it
                     recvState = RECV_STATE_AWAITING_START_DELIMITER;
                     lastStateChangeTime = time;
@@ -115,12 +115,11 @@ void XbeeSafetyRadio::update() {
 void XbeeSafetyRadio::analyzePacket() {
     //We really only care about a single byte from this packet: the byte containing the DIO states
     //IO data starts at offset 9.  Offset 9 is the number of ADC samples (we ignore this)
-    //Offset 12 contains digital input 8, as well as some ADC data (we ignore this)
-    //Offset 13 contains digital inputs 0 through 7 only.  We use this offset.
+    //Offset 19 contains digital inputs 0 through 7 only.  We use this offset.
     //Conveniently, the pin number also represents the number of bits to shift to read that pin
-    uint8_t digitalInByte = recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(13)];
+    uint8_t digitalInByte = recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(19)];
     bool pinState = (((unsigned) digitalInByte >> ESTOP_INPUT_PIN) & 0x01U);
-    if (!pinState) {
+    if (pinState) {
         //If the pin is low, we consider this an Estop.  Update the time accordingly
         lastEstopRecvTime = millis();
         DEBUG_LOG("Xbee received ESTOP packet!");
