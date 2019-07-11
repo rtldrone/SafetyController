@@ -12,8 +12,12 @@
 static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial1);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
+//TODO remove
+uint16_t estop_counter = 0;
+bool was_estopped = false;
+
 void onWireData(int numBytes) {
-    //This is empty because we read the data from I2C elsewhere, but we need to have it so the data goes in the buffer
+    safetyWatchdog->update();
 }
 
 void setup() {
@@ -22,6 +26,7 @@ void setup() {
     Serial.begin(9600);
 #endif
     Serial1.begin(9600);
+    Wire.setClock(100000);
     Wire.begin(8);
     Wire.onReceive(onWireData);
     pinMode(RELAY_PIN, OUTPUT);
@@ -32,11 +37,23 @@ void loop() {
 
     //Update all safety managers
     safetyRadio->update();
-    safetyWatchdog->update();
+    //The safety watchdog is checked in onWireData
 
     //Check state from all safety managers
     state &= safetyRadio->getSafetyState();
     state &= safetyWatchdog->getSafetyState();
+
+    //TODO remove
+    if (state == ESTOP) {
+        if (!was_estopped) {
+            estop_counter++;
+            was_estopped = true;
+        }
+    } else {
+        was_estopped = false;
+    }
+
+    Serial.println(estop_counter);
 
     //Set the output to the state
     digitalWrite(RELAY_PIN, state);

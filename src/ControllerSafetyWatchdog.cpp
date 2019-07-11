@@ -30,10 +30,11 @@ void ControllerSafetyWatchdog::update() {
 
 bool ControllerSafetyWatchdog::getSafetyState() {
     uint32_t time = millis();
-    if (time - lastValidRecvTime > CONTROLLER_WATCHDOG_TIMEOUT) {
+    //Need to check if lastValidRecvTime is less than time since interrupts can actually cause it to be bigger
+    //If it is, this is considered a valid enable case.
+    if (lastValidRecvTime < time && time - lastValidRecvTime > CONTROLLER_WATCHDOG_TIMEOUT) {
         //We haven't gotten an update in more time than the timeout
         return ESTOP;
     }
-
     return ENABLE;
 }
