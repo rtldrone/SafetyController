@@ -22,9 +22,7 @@ void onWireData(int numBytes) {
 
 void setup() {
     wdt_enable(SYSTEM_WATCHDOG); //Enable the system watchdog.  This fully reboots the controller if something hangs
-#ifdef DEBUG
     Serial.begin(9600);
-#endif
     Serial1.begin(9600);
     Wire.setClock(100000);
     Wire.begin(8);

@@ -12,6 +12,7 @@
 #define RECV_BUFFER_SIZE 256
 #define ESTOP_INPUT_PIN 3U
 #define XBEE_BAUDRATE 9600
+#define XBEE_MAX_NUM_DEVICES 16
 
 //State constants
 #define RECV_STATE_AWAITING_START_DELIMITER 0
@@ -53,10 +54,16 @@ public:
      */
     bool getSafetyState();
 
+    /**
+    * Structure representing the state of an e-stop device
+    */
+    struct EstopDevice {
+        uint8_t address[8];
+        bool lastRecvState;
+        uint32_t lastRecvTime = 0;
+    };
 private:
     Stream *serial;
-    uint32_t lastValidRecvTime = 0;
-    uint32_t lastEstopRecvTime = 0;
     uint32_t lastStateChangeTime = 0;
     uint8_t recvState = RECV_STATE_AWAITING_START_DELIMITER;
     uint8_t recvBuffer[RECV_BUFFER_SIZE] = {0};
@@ -64,6 +71,12 @@ private:
     uint16_t recvPayloadSize = 0;
 
     void analyzePacket();
+
+    EstopDevice *devices[XBEE_MAX_NUM_DEVICES] = { nullptr };
+    EstopDevice *findDevice(const uint8_t *address);
+    void insertOrUpdateDevice(const uint8_t *address, bool state, uint32_t time);
+    bool getCombinedEstopState();
+    uint32_t getLowestLastRecvTime();
 };
 
 #endif //SAFETYCONTROLLER_XBEESAFETYRADIO_H

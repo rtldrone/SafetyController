@@ -19,6 +19,94 @@ uint8_t XbeeSafetyRadio::checksum(const uint8_t *buffer, size_t length) {
     return (uint8_t) checksum;
 }
 
+XbeeSafetyRadio::EstopDevice *XbeeSafetyRadio::findDevice(const uint8_t *address) {
+    for (int i = 0; i < XBEE_MAX_NUM_DEVICES; i++) {
+        XbeeSafetyRadio::EstopDevice *device = devices[i];
+
+        if (device == nullptr) {
+            //We use nullptr as an "empty" element, so if we reach this it means that there isn't a device matching the
+            //address
+            return nullptr;
+        }
+
+        //Read each of the 8 bytes making up an address
+        for (int j = 0; j < 8; j++) {
+            //Compare the corresponding byte in each address
+            if (device->address[j] != address[j]) {
+                //We know the address isn't equal, move onto the next device
+                break;
+            }
+            if (j == 7) {
+                //We've made it to the last byte and it was equal.  This means we've found the device
+                return device;
+            }
+        }
+    }
+
+    return nullptr; //No devices matched the criteria
+}
+
+void XbeeSafetyRadio::insertOrUpdateDevice(const uint8_t *address, bool state, uint32_t time) {
+    EstopDevice *device = findDevice(address); //Try to find an existing device with this address
+
+    //The device was not found
+    if (device == nullptr) {
+        //We need to create a new device and insert it.
+        device = new EstopDevice();
+        //Initialize the address
+        for (int i = 0; i < 8; i++) {
+            device->address[i] = address[i];
+        }
+        //Find the first available slot in the array
+        for (int i = 0; i < XBEE_MAX_NUM_DEVICES; i++) {
+            if (devices[i] == nullptr) {
+                devices[i] = device; //Store the device
+                break;
+            }
+            if (i == XBEE_MAX_NUM_DEVICES - 1) {
+                //We've reached the end of the array and there was no room.  Delete the object we made to avoid
+                //a memory leak (note this will only happen if we max out the number of devices)
+                delete device;
+                return;
+            }
+        }
+    }
+
+    //Update the rest of the device data
+    device->lastRecvState = state;
+    device->lastRecvTime = time;
+}
+
+bool XbeeSafetyRadio::getCombinedEstopState() {
+    for (int i = 0; i < XBEE_MAX_NUM_DEVICES; i++) {
+        if (devices[i] == nullptr) {
+            break;
+        }
+        if (devices[i]->lastRecvState) {
+            //This device is estopped, meaning the global state is E-stop
+            return ESTOP;
+        }
+    }
+
+    return ENABLE;
+}
+
+uint32_t XbeeSafetyRadio::getLowestLastRecvTime() {
+    uint32_t lowestTime = 0xFFFFFFFFU; //Start at the max value
+    for (int i = 0; i < XBEE_MAX_NUM_DEVICES; i++) {
+        if (devices[i] == nullptr) {
+            break; //Done searching
+        }
+        if (devices[i]->lastRecvTime < lowestTime) {
+            lowestTime = devices[i]->lastRecvTime;
+        }
+    }
+    if (lowestTime == 0xFFFFFFFFU) {
+        return 0; //No received data.
+    }
+    return lowestTime;
+}
+
 void XbeeSafetyRadio::update() {
     //Variables used throughout the update process
     uint32_t time = millis();
@@ -104,7 +192,6 @@ void XbeeSafetyRadio::update() {
                     break;
                 }
                 DEBUG_LOG("Xbee received valid packet");
-                lastValidRecvTime = time;
                 analyzePacket();
                 recvState = RECV_STATE_AWAITING_START_DELIMITER;
                 lastStateChangeTime = time;
@@ -113,26 +200,33 @@ void XbeeSafetyRadio::update() {
 }
 
 void XbeeSafetyRadio::analyzePacket() {
+    uint32_t time = millis(); //Read the time
+
     //We really only care about a single byte from this packet: the byte containing the DIO states
     //IO data starts at offset 9.  Offset 9 is the number of ADC samples (we ignore this)
     //Offset 19 contains digital inputs 0 through 7 only.  We use this offset.
     //Conveniently, the pin number also represents the number of bits to shift to read that pin
     uint8_t digitalInByte = recvBuffer[FRAME_OFFSET_TO_BUFFER_INDEX(19)];
     bool pinState = (((unsigned) digitalInByte >> ESTOP_INPUT_PIN) & 0x01U);
-    if (pinState) {
-        //If the pin is low, we consider this an Estop.  Update the time accordingly
-        lastEstopRecvTime = millis();
-        DEBUG_LOG("Xbee received ESTOP packet!");
-    }
+
+    //Now that we've received the state, we can register this data with our device array
+    //The incoming device address starts at frame offset 5 and is 8 bytes long.
+    uint8_t *address = recvBuffer + FRAME_OFFSET_TO_BUFFER_INDEX(5); //This points to the start of the incoming address
+    //This function handles the rest for us
+    insertOrUpdateDevice(address, pinState, time);
 }
 
 bool XbeeSafetyRadio::getSafetyState() {
     uint32_t time = millis();
-    if (time - lastValidRecvTime > XBEE_WATCHDOG_TIMEOUT) {
+
+    bool combinedState = getCombinedEstopState();
+    uint32_t lastRecvTime = getLowestLastRecvTime();
+
+    if (time - lastRecvTime > XBEE_WATCHDOG_TIMEOUT) {
         //It's been too long since we've gotten a valid packet.
         return ESTOP;
     }
-    if (time - lastEstopRecvTime < XBEE_ESTOP_TIMEOUT) {
+    if (combinedState == ESTOP) {
         //The last received estop packet has not timed out yet.
         return ESTOP;
     }
