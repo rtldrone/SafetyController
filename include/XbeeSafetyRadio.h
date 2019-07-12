@@ -74,6 +74,7 @@ private:
 
     EstopDevice *devices[XBEE_MAX_NUM_DEVICES] = { nullptr };
     EstopDevice *findDevice(const uint8_t *address);
+    int numRegisteredDevices();
     void insertOrUpdateDevice(const uint8_t *address, bool state, uint32_t time);
     bool getCombinedEstopState();
     uint32_t getLowestLastRecvTime();

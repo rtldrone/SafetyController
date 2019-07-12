@@ -46,6 +46,17 @@ XbeeSafetyRadio::EstopDevice *XbeeSafetyRadio::findDevice(const uint8_t *address
     return nullptr; //No devices matched the criteria
 }
 
+int XbeeSafetyRadio::numRegisteredDevices() {
+    int num = 0;
+    for (int i = 0; i < XBEE_MAX_NUM_DEVICES; i++) {
+        if (devices[i] == nullptr) {
+            break;
+        }
+        num++;
+    }
+    return num;
+}
+
 void XbeeSafetyRadio::insertOrUpdateDevice(const uint8_t *address, bool state, uint32_t time) {
     EstopDevice *device = findDevice(address); //Try to find an existing device with this address
 
@@ -221,6 +232,11 @@ bool XbeeSafetyRadio::getSafetyState() {
 
     bool combinedState = getCombinedEstopState();
     uint32_t lastRecvTime = getLowestLastRecvTime();
+
+    if (numRegisteredDevices() == 0) {
+        //No devices have registered yet
+        return ESTOP;
+    }
 
     if (time - lastRecvTime > XBEE_WATCHDOG_TIMEOUT) {
         //It's been too long since we've gotten a valid packet.
