@@ -58,8 +58,8 @@ public:
     * Structure representing the state of an e-stop device
     */
     struct EstopDevice {
-        uint8_t address[8];
-        bool lastRecvState;
+        uint8_t address[8] = {0};
+        bool lastRecvState = false;
         uint32_t lastRecvTime = 0;
     };
 private:
