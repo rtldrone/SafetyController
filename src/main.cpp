@@ -12,10 +12,6 @@
 static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial1);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
-//TODO remove
-uint16_t estop_counter = 0;
-bool was_estopped = false;
-
 void onWireData(int numBytes) {
     safetyWatchdog->update();
 }
@@ -40,19 +36,7 @@ void loop() {
     //Check state from all safety managers
     state &= safetyRadio->getSafetyState();
     state &= safetyWatchdog->getSafetyState();
-
-    //TODO remove
-    if (state == ESTOP) {
-        if (!was_estopped) {
-            estop_counter++;
-            was_estopped = true;
-        }
-    } else {
-        was_estopped = false;
-    }
-
-    Serial.println(estop_counter);
-
+    
     //Set the output to the state
     digitalWrite(RELAY_PIN, state);
     wdt_reset(); //Feed the system watchdog timer
