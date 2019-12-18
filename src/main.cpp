@@ -12,8 +12,11 @@
 static XbeeSafetyRadio *safetyRadio = new XbeeSafetyRadio(&Serial1);
 static ControllerSafetyWatchdog *safetyWatchdog = new ControllerSafetyWatchdog(&Wire);
 
-void onWireData(int numBytes) {
-    safetyWatchdog->update();
+volatile bool lastState = ENABLE;
+
+void onWireRequest() {
+    //Update the safety watchdog with the last known enable state
+    safetyWatchdog->onUpdate(lastState);
 }
 
 void setup() {
@@ -22,7 +25,7 @@ void setup() {
     Serial1.begin(9600);
     Wire.setClock(100000);
     Wire.begin(8);
-    Wire.onReceive(onWireData);
+    Wire.onRequest(onWireRequest);
     pinMode(RELAY_PIN, OUTPUT);
 }
 
@@ -31,11 +34,14 @@ void loop() {
 
     //Update all safety managers
     safetyRadio->update();
-    //The safety watchdog is checked in onWireData
+    //The safety watchdog is checked in onWireRequest
 
     //Check state from all safety managers
     state &= safetyRadio->getSafetyState();
-    state &= safetyWatchdog->getSafetyState();
+    //state &= safetyWatchdog->getSafetyState();
+
+    //Update last state variable
+    lastState = state;
     
     //Set the output to the state
     digitalWrite(RELAY_PIN, state);

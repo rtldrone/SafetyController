@@ -16,9 +16,9 @@ public:
     explicit ControllerSafetyWatchdog(Stream *_twoWire);
 
     /**
-     * Updates the watchdog I2C data.  This should be run every loop
+     * Call this when an update request is received from the primary controller
      */
-    void update();
+    void onUpdate(bool lastState);
 
     /**
      * Gets the current safety state
