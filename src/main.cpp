@@ -24,7 +24,7 @@ void setup() {
     Serial.begin(9600);
     Serial1.begin(9600);
     Wire.setClock(100000);
-    Wire.begin(8);
+    Wire.begin(21);
     Wire.onRequest(onWireRequest);
     pinMode(RELAY_PIN, OUTPUT);
 }
@@ -38,7 +38,7 @@ void loop() {
 
     //Check state from all safety managers
     state &= safetyRadio->getSafetyState();
-    //state &= safetyWatchdog->getSafetyState();
+    state &= safetyWatchdog->getSafetyState();
 
     //Update last state variable
     lastState = state;
