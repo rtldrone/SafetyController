@@ -38,7 +38,7 @@ void loop() {
 
     //Check state from all safety managers
     state &= safetyRadio->getSafetyState();
-    state &= safetyWatchdog->getSafetyState();
+    //state &= safetyWatchdog->getSafetyState();
 
     //Update last state variable
     lastState = state;
